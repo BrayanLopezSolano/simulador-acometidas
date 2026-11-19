@@ -658,7 +658,12 @@ function pintarJuego(arriba = false) {
 
   app.replaceChildren(
     h("div", { class: "barra" },
-      h("button", { onclick: () => { if (j.paso === 0 || confirm("¿Salir? Se pierde el avance de esta ronda.")) inicio(); }, "aria-label": "Volver al inicio" }, "← Inicio"),
+      h("button", { "data-accion": "salir", onclick: (ev) => {
+        // Sin confirm(): el primer toque pide confirmación en el mismo botón, el segundo sale.
+        if (j.paso === 0 || j.salir) return inicio();
+        j.salir = true; ev.currentTarget.textContent = "¿Salir? Toca otra vez";
+        setTimeout(() => { j.salir = false; }, 4000);
+      }, "aria-label": "Volver al inicio" }, "← Inicio"),
       h("h1", {}, `${ac.titulo.replace(/^Acometida\s+/i, "").replace(/^./, c => c.toUpperCase())} · ${MODO_TXT[j.modo]}`),
       j.modo === "practica" ? h("button", { "data-accion": "pista", onclick: darPista }, "Pista") : null),
     h("div", { class: "progreso", role: "progressbar", "aria-valuemin": "0", "aria-valuemax": String(total), "aria-valuenow": String(j.paso) },

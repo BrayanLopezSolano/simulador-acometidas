@@ -56,7 +56,7 @@ async function revisarDiseno(page, nombre) {
   const page = await context.newPage();
   const erroresJs = [];
   page.on('pageerror', e => erroresJs.push(e.message));
-  page.on('dialog', d => d.accept());
+  page.on("dialog", d => d.dismiss());
 
   console.log('1. Inicio');
   await page.goto(URL);
