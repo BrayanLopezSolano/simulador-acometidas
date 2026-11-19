@@ -1,0 +1,870 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b4f9c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Acometidas">
+<title>Simulador de acometidas</title>
+<style>
+:root{
+  --bg:#f5f3ee; --texto:#111; --suave:#3d3d3d; --primario:#0b4f9c; --primario-osc:#083a73;
+  --sel:#ffd400; --ok-bg:#dcf3e2; --ok:#0b5d26; --mal-bg:#fde2e2; --mal:#9b0d17;
+  --aviso-bg:#fff1c7; --aviso:#6b4a00; --info-bg:#e3eefb; --tarjeta:#fff; --borde:#5b5b5b;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--texto);font:18px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+#app{max-width:560px;margin:0 auto;padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 16px max(16px,env(safe-area-inset-left))}
+h1{font-size:26px;line-height:1.15;margin:4px 0 8px}
+h2{font-size:22px;margin:18px 0 8px}
+h3{font-size:20px;margin:12px 0 6px}
+p{margin:0 0 10px}
+a{color:var(--primario-osc)}
+button,.boton{font:inherit;min-height:48px;min-width:48px;border-radius:12px;border:2px solid var(--primario);background:#fff;color:var(--primario-osc);padding:10px 14px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;text-align:center}
+.btn-pri{background:var(--primario);color:#fff}
+.btn-ancho{width:100%;margin:6px 0}
+.fila{display:flex;gap:8px;flex-wrap:wrap}
+.fila>*{flex:1 1 140px}
+button:focus-visible,.boton:focus-visible{outline:4px solid #c05800;outline-offset:2px}
+.tarjeta{background:var(--tarjeta);border:2px solid #cfcac0;border-radius:16px;padding:14px;margin:12px 0}
+.aviso{background:var(--aviso-bg);color:var(--aviso);border-left:6px solid #c08a00;padding:10px 12px;border-radius:10px;margin:10px 0}
+.cabecera{background:var(--primario-osc);color:#fff;border-radius:16px;padding:16px;border-top:6px solid var(--sel)}
+.cabecera p{margin:0}
+.etiqueta{display:inline-block;font-size:18px;line-height:1.2;padding:2px 8px;border-radius:8px;border:2px solid;margin:2px 0;font-weight:600}
+.cat-a{color:#0b5d26;border-color:#0b5d26;background:#e7f7ec}
+.cat-b{color:#6b4a00;border-color:#a87800;background:#fff6dc}
+.cat-c{color:#9b0d17;border-color:#9b0d17;background:#fdeaea}
+.puntaje-guardado{color:var(--suave)}
+
+/* ---------- Juego ---------- */
+.barra{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.barra h1{font-size:18px;margin:0;flex:1;line-height:1.2}
+.progreso{height:8px;background:#d8d3c8;border-radius:6px;overflow:hidden;margin:2px 0 6px}
+.progreso>div{height:100%;background:var(--primario)}
+.tarea{font-weight:700;margin:0 0 6px}
+.escena{position:relative;width:min(100%,max(300px,calc((100vh - 320px) * 0.9)));aspect-ratio:360/400;margin:0 auto;border-radius:12px;overflow:hidden;border:2px solid #333;background:#cfe8fb}
+.escena svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.zona{position:absolute;min-height:0;min-width:0;padding:0;border:3px dashed transparent;background:transparent;border-radius:8px}
+.con-pieza .zona{border-color:#1a1a1a;background:rgba(255,212,0,.28)}
+.zona.pista{border:4px solid #e00000;background:rgba(255,0,0,.18);animation:pulso 1s ease-in-out infinite}
+@keyframes pulso{50%{box-shadow:0 0 0 7px rgba(224,0,0,.4)}}
+.fb{padding:10px 12px;border-radius:10px;border-left:6px solid;margin:8px 0;min-height:52px}
+.inferior{position:sticky;bottom:0;z-index:5;background:var(--bg);margin:0 -8px;padding:2px 8px 0}
+.inferior .fb{margin:6px 0;max-height:17vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.fb.ok{background:var(--ok-bg);color:var(--ok);border-color:var(--ok)}
+.fb.mal{background:var(--mal-bg);color:var(--mal);border-color:var(--mal)}
+.fb.info{background:var(--info-bg);color:#0a2f5c;border-color:var(--primario)}
+.fb .nota{display:block;margin-top:6px;color:var(--aviso);font-weight:600}
+.bandeja{background:#fff;border:2px solid #333;border-radius:14px 14px 0 0;margin:0 -8px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));display:grid;grid-auto-flow:column;grid-auto-columns:104px;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.bandeja-titulo{font-weight:700;margin:6px 0 0}
+.pieza{flex-direction:column;gap:2px;height:78px;padding:4px;border-color:#555;color:#111;line-height:1.1}
+.pieza svg{width:34px;height:34px;flex:none}
+.pieza.elegida{background:var(--sel);border:4px solid #111}
+.pieza.pista{border:4px solid #e00000;animation:pulso 1s ease-in-out infinite}
+
+/* ---------- Resultado / otros ---------- */
+.nota-grande{font-size:56px;font-weight:800;line-height:1;margin:8px 0}
+.lista-errores li{margin:0 0 10px}
+.icono-grande{display:block;width:140px;height:140px;margin:8px auto;background:#fff;border:2px solid #ccc;border-radius:16px}
+ol.pasos li{margin:0 0 10px}
+dl dt{font-weight:700;margin-top:8px}
+dl dd{margin:0 0 6px}
+details summary{min-height:48px;display:flex;align-items:center;font-weight:700;cursor:pointer}
+.pie{color:var(--suave);margin-top:20px}
+</style>
+</head>
+<body>
+<div id="app" aria-live="polite"></div>
+
+<script>
+/* =====================================================================
+   BLOQUE DE DATOS — lo puede editar un instructor sin tocar la lógica.
+   ---------------------------------------------------------------------
+   Categorías ("categoria"):
+     "a" = Confirmado con fuente
+     "b" = Práctica común, NO confirmada con norma dominicana
+     "c" = Debe confirmarlo el instructor
+   Reglas para editar:
+     - Cada paso indica una "pieza" (id de DATOS.piezas) y una "zona"
+       (id de DATOS.escenas.<tipo>.zonas). Si escribes un id que no existe,
+       la app mostrará un aviso en pantalla diciendo cuál está mal.
+     - Para cambiar el orden, mueve los pasos dentro de la lista.
+     - "critico: true" = paso de seguridad; saltárselo resta más puntos.
+     - "confirmar" = texto que aparece como "Confirmar con instructor".
+     - NO escribas medidas (alturas, profundidades, calibres) sin fuente.
+   ===================================================================== */
+const DATOS = {
+
+  titulo: "Simulador de acometidas",
+  subtitulo: "Práctica para el examen del INFOTEP (República Dominicana)",
+
+  puntuacion: { critico: 20, orden: 5, pieza: 5, lugar: 3 },   // puntos que se restan en el examen
+  umbrales: { listo: 80, repasa: 60 },                           // nota mínima para cada mensaje
+
+  reglasDeOro: [
+    "Abrir (cortar) todas las fuentes de tensión.",
+    "Bloquear los aparatos de corte para que nadie los vuelva a conectar.",
+    "Verificar que NO hay tensión.",
+    "Poner a tierra y en cortocircuito.",
+    "Señalizar y delimitar la zona de trabajo."
+  ],
+
+  /* ---------------- PIEZAS Y HERRAMIENTAS ----------------
+     nombre: nombre completo · corto: texto en la bandeja · alias: otros nombres
+     queEs / paraQue: explicación sencilla · distractor: pieza que NO se debe usar
+     porQueNo: explicación si alguien usa un distractor · icono: dibujo SVG (48x48) */
+  piezas: {
+    epp: { nombre: "Equipo de protección personal (EPP)", corto: "EPP", alias: "",
+      queEs: "Casco, guantes dieléctricos (aislantes) y lentes de seguridad.",
+      paraQue: "Protege de golpes, descargas eléctricas y chispas. Se pone antes de empezar.", categoria: "b",
+      icono: `<path d="M9 30a15 15 0 0 1 30 0z" fill="#ffd400" stroke="#222" stroke-width="2"/><rect x="5" y="30" width="38" height="5" rx="2" fill="#e0b800" stroke="#222" stroke-width="2"/><rect x="21" y="12" width="6" height="18" fill="#e0b800"/><circle cx="14" cy="42" r="4" fill="#ff6a00" stroke="#222"/><circle cx="34" cy="42" r="4" fill="#ff6a00" stroke="#222"/>` },
+    detector: { nombre: "Detector de tensión", corto: "Detector", alias: "probador de voltaje",
+      queEs: "Aparato que avisa con luz o sonido si hay electricidad.",
+      paraQue: "Comprobar que NO hay tensión antes de tocar. Nunca se supone: se verifica.", categoria: "a",
+      icono: `<rect x="19" y="5" width="10" height="30" rx="4" fill="#ffd400" stroke="#222" stroke-width="2"/><polygon points="19,35 29,35 24,45" fill="#555" stroke="#222" stroke-width="2"/><circle cx="24" cy="13" r="3" fill="#e00"/><rect x="21" y="20" width="6" height="10" fill="#222"/>` },
+    conos: { nombre: "Conos y cinta de seguridad", corto: "Conos", alias: "",
+      queEs: "Conos de colores y cinta de aviso.",
+      paraQue: "Marcar la zona de trabajo para que nadie pase cerca ni debajo.", categoria: "a",
+      icono: `<polygon points="12,40 24,7 36,40" fill="#ff7a00" stroke="#7a3a00" stroke-width="2"/><polygon points="17,27 31,27 33,33 15,33" fill="#fff"/><rect x="7" y="40" width="34" height="5" rx="2" fill="#7a3a00"/>` },
+    aislador: { nombre: "Aislador de anclaje (carrete) con soporte", corto: "Aislador", alias: "armella, rack",
+      queEs: "Pieza de porcelana o plástico montada en un soporte de metal que se fija a la pared.",
+      paraQue: "Recibir el tirón del cable que viene del poste, sin que el cable toque la pared.", categoria: "b",
+      icono: `<rect x="5" y="14" width="7" height="24" fill="#777" stroke="#222"/><rect x="5" y="22" width="26" height="5" fill="#777" stroke="#222"/><circle cx="32" cy="25" r="9" fill="#fff" stroke="#222" stroke-width="3"/><circle cx="32" cy="25" r="3" fill="#222"/>` },
+    base_contador: { nombre: "Base del contador", corto: "Base", alias: "base del medidor, socket",
+      queEs: "Caja metálica que se fija en la pared.",
+      paraQue: "Sostener el contador (medidor de energía) y recibir los cables de la calle y los que van a la casa.", categoria: "b",
+      icono: `<rect x="10" y="5" width="28" height="38" rx="5" fill="#c9ccd1" stroke="#222" stroke-width="2"/><circle cx="24" cy="21" r="9" fill="#fff" stroke="#222" stroke-width="2"/><rect x="18" y="34" width="12" height="4" fill="#555"/>` },
+    tubo: { nombre: "Tubo eléctrico con abrazaderas", corto: "Tubo", alias: "tubería, conduit",
+      queEs: "Tubo de metal o PVC hecho para cables, y las abrazaderas que lo sujetan a la pared.",
+      paraQue: "Proteger los cables desde la base del contador hasta la mufa.", categoria: "b",
+      icono: `<rect x="20" y="3" width="8" height="42" fill="#9aa3ad" stroke="#222" stroke-width="2"/><rect x="14" y="13" width="20" height="5" fill="#444"/><rect x="14" y="31" width="20" height="5" fill="#444"/>` },
+    mufa: { nombre: "Mufa", corto: "Mufa", alias: "capacete, cabezal",
+      queEs: "Tapa con forma de capucha que va en la punta del tubo, con las salidas hacia abajo.",
+      paraQue: "Evitar que entre agua de lluvia al tubo.", categoria: "b",
+      icono: `<rect x="20" y="24" width="8" height="21" fill="#9aa3ad" stroke="#222" stroke-width="2"/><path d="M10 26h28v-6q-14-20-28 0z" fill="#444" stroke="#222" stroke-width="2"/><path d="M15 26v6M24 26v6M33 26v6" stroke="#111" stroke-width="3"/>` },
+    conductores: { nombre: "Conductores de la acometida", corto: "Cables", alias: "alambres",
+      queEs: "Los cables que van desde la mufa hasta la base del contador.",
+      paraQue: "Llevar la electricidad desde la entrada hasta la base del contador.", categoria: "b",
+      icono: `<path d="M8 8c10 6 0 26 12 32M20 8c10 6 0 26 12 32M32 8c10 6 0 26 12 32" fill="none" stroke="#111" stroke-width="4"/><path d="M32 8c10 6 0 26 12 32" fill="none" stroke="#bbb" stroke-width="2"/>` },
+    varilla: { nombre: "Varilla de tierra y su conductor", corto: "Varilla", alias: "barra de tierra, polo a tierra",
+      queEs: "Barra de metal (de cobre) que se clava en el suelo, con un cable que la une a la base.",
+      paraQue: "Dar un camino seguro a la electricidad si hay una falla, para proteger a las personas.", categoria: "b",
+      icono: `<rect x="26" y="14" width="6" height="32" fill="#b87333" stroke="#5a3210" stroke-width="2"/><path d="M6 6c8 0 10 4 12 8s6 2 11 2" fill="none" stroke="#1f7a1f" stroke-width="4"/><rect x="2" y="38" width="44" height="3" fill="#8b6b47"/>` },
+    triplex: { nombre: "Cable triplex con grapa", corto: "Triplex", alias: "cable de acometida",
+      queEs: "Cable de tres conductores trenzados que viene desde el poste.",
+      paraQue: "Traer la energía desde la red. Se sujeta en el aislador de anclaje de la casa.", categoria: "b",
+      icono: `<path d="M4 34c8-14 14 6 22-8s14 6 18-6" fill="none" stroke="#111" stroke-width="4"/><path d="M4 26c8 14 14-6 22 8s14-6 18 6" fill="none" stroke="#111" stroke-width="4"/><path d="M4 30h40" stroke="#aaa" stroke-width="2"/>` },
+    breaker: { nombre: "Breaker principal", corto: "Breaker", alias: "interruptor principal, disyuntor",
+      queEs: "Interruptor automático que va en el panel de la casa.",
+      paraQue: "Cortar toda la energía de la casa y protegerla si pasa demasiada corriente.", categoria: "b",
+      icono: `<rect x="13" y="5" width="22" height="38" rx="3" fill="#eee" stroke="#222" stroke-width="2"/><rect x="19" y="13" width="10" height="14" fill="#222"/><rect x="17" y="33" width="14" height="4" fill="#999"/>` },
+    lista: { nombre: "Lista de revisión", corto: "Revisión", alias: "",
+      queEs: "Hoja con los puntos que hay que revisar.",
+      paraQue: "Comprobar el trabajo y pedir la revisión del instructor.", categoria: "b",
+      icono: `<rect x="9" y="6" width="30" height="38" rx="3" fill="#fff" stroke="#222" stroke-width="2"/><rect x="17" y="3" width="14" height="7" rx="2" fill="#777"/><path d="M14 20l3 3 5-6M14 31l3 3 5-6" fill="none" stroke="#0b5d26" stroke-width="3"/><path d="M25 21h9M25 32h9" stroke="#222" stroke-width="2"/>` },
+    plano: { nombre: "Plano y detector de servicios enterrados", corto: "Plano", alias: "localizador",
+      queEs: "El plano de la zona y un aparato que detecta tuberías y cables bajo tierra.",
+      paraQue: "Saber qué hay enterrado antes de excavar.", categoria: "b",
+      icono: `<rect x="4" y="8" width="30" height="26" fill="#fff" stroke="#222" stroke-width="2"/><path d="M8 26c6-8 12 2 22-10" fill="none" stroke="#0b4f9c" stroke-width="2"/><circle cx="33" cy="31" r="8" fill="none" stroke="#222" stroke-width="3"/><path d="M39 37l6 6" stroke="#222" stroke-width="4"/>` },
+    pala: { nombre: "Pala y cinta métrica", corto: "Pala", alias: "",
+      queEs: "Herramientas para excavar y medir.",
+      paraQue: "Excavar la zanja por la ruta marcada y medirla.", categoria: "b",
+      icono: `<rect x="22" y="3" width="4" height="26" fill="#8a5a2b"/><rect x="17" y="2" width="14" height="4" rx="2" fill="#8a5a2b"/><path d="M15 28h18v8q-9 12-18 0z" fill="#888" stroke="#222" stroke-width="2"/>` },
+    arena: { nombre: "Arena", corto: "Arena", alias: "",
+      queEs: "Arena fina, sin piedras.",
+      paraQue: "Hacer una cama pareja en el fondo de la zanja para que el tubo no se dañe.", categoria: "b",
+      icono: `<path d="M3 40q21-34 42 0z" fill="#e8d29a" stroke="#8a7440" stroke-width="2"/><circle cx="18" cy="32" r="1.5" fill="#8a7440"/><circle cx="28" cy="28" r="1.5" fill="#8a7440"/><circle cx="31" cy="35" r="1.5" fill="#8a7440"/>` },
+    tubo_pvc: { nombre: "Tubo PVC eléctrico con curvas y uniones", corto: "Tubo PVC", alias: "conduit PVC",
+      queEs: "Tubo plástico fabricado para cables eléctricos (no para agua).",
+      paraQue: "Proteger el cable bajo tierra a lo largo de la zanja.", categoria: "b",
+      icono: `<path d="M4 34h22a10 10 0 0 0 10-10V6" fill="none" stroke="#5e6670" stroke-width="10"/><path d="M4 34h22a10 10 0 0 0 10-10V6" fill="none" stroke="#9aa0a6" stroke-width="6"/>` },
+    tubo_subida: { nombre: "Tubo de subida protegido", corto: "Subida", alias: "bajante",
+      queEs: "Tramo de tubo que sale del suelo y sube por el poste o por la pared.",
+      paraQue: "Proteger el cable donde sale de la tierra y puede recibir golpes.", categoria: "b",
+      icono: `<rect x="20" y="4" width="8" height="38" fill="#9aa0a6" stroke="#222" stroke-width="2"/><rect x="16" y="26" width="16" height="16" fill="#e0b800" stroke="#222" stroke-width="2"/><rect x="2" y="42" width="44" height="4" fill="#8b6b47"/>` },
+    guia: { nombre: "Guía pasacables", corto: "Guía", alias: "cinta guía, sonda",
+      queEs: "Cinta larga y flexible enrollada.",
+      paraQue: "Recorrer el tubo y jalar el cable por dentro.", categoria: "b",
+      icono: `<circle cx="22" cy="22" r="16" fill="none" stroke="#e0b800" stroke-width="4"/><circle cx="22" cy="22" r="10" fill="none" stroke="#e0b800" stroke-width="4"/><circle cx="22" cy="22" r="4" fill="#333"/><path d="M38 22c4 6 6 14 6 22" fill="none" stroke="#e0b800" stroke-width="4"/>` },
+    cable_humedo: { nombre: "Cable para lugar húmedo", corto: "Cable húmedo", alias: "",
+      queEs: "Cable con aislamiento fabricado para lugares mojados o húmedos.",
+      paraQue: "Ir dentro del tubo enterrado, donde puede haber agua.", categoria: "b",
+      icono: `<path d="M4 38c10-24 20 8 30-16" fill="none" stroke="#111" stroke-width="6"/><path d="M38 6q6 9 0 14q-6-5 0-14z" fill="#2b7bd6" stroke="#0b3d7a"/>` },
+    cinta_advertencia: { nombre: "Cinta de advertencia", corto: "Cinta aviso", alias: "",
+      queEs: "Cinta plástica de color con letrero de peligro.",
+      paraQue: "Avisar a quien excave en el futuro que debajo hay un cable eléctrico.", categoria: "b",
+      icono: `<rect x="2" y="16" width="44" height="16" fill="#e00" stroke="#600" stroke-width="2"/><path d="M8 32l8-16M20 32l8-16M32 32l8-16" stroke="#ffd400" stroke-width="4"/>` },
+
+    /* ---- Distractores: piezas que NO se deben usar ---- */
+    cable_interior: { nombre: "Cable para interiores", corto: "Cable interior", alias: "", distractor: true,
+      queEs: "Cable delgado para usar dentro de la casa, en lugar seco.",
+      paraQue: "Circuitos dentro de la vivienda. No sirve para la acometida.", categoria: "b",
+      porQueNo: "Ese cable es para dentro de la casa. Afuera recibe sol y lluvia, y bajo tierra hay humedad: la acometida necesita cable apto para ese lugar.",
+      icono: `<path d="M4 30c10-14 20 6 40-8" fill="none" stroke="#c00" stroke-width="3"/><path d="M4 36c10-14 20 6 40-8" fill="none" stroke="#fff" stroke-width="3"/><path d="M4 36c10-14 20 6 40-8" fill="none" stroke="#999" stroke-width="1"/><path d="M14 18l10-9 10 9v-1M17 16v-0" fill="none" stroke="#222" stroke-width="2"/>` },
+    tubo_agua: { nombre: "Tubo de agua (PVC sanitario)", corto: "Tubo agua", alias: "", distractor: true,
+      queEs: "Tubo plástico hecho para agua.",
+      paraQue: "Tuberías de agua. No es para cables.", categoria: "b",
+      porQueNo: "Ese es un tubo para agua. El cable debe ir en tubo eléctrico, fabricado y marcado para ese uso.",
+      icono: `<rect x="4" y="20" width="40" height="10" fill="#f2f2f2" stroke="#2b7bd6" stroke-width="2"/><path d="M24 4q7 9 0 13q-7-4 0-13z" fill="#2b7bd6"/>` },
+    cinta_aislante: { nombre: "Cinta aislante", corto: "Cinta aislante", alias: "teipe", distractor: true,
+      queEs: "Rollo de cinta negra de plástico.",
+      paraQue: "Cubrir pequeños empalmes de baja exigencia. No sostiene ni une la acometida.", categoria: "b",
+      porQueNo: "La cinta aislante sola no sirve para unir ni sostener los cables de la acometida: se usan conectores y herrajes adecuados. Además, el empalme con la red lo hace la distribuidora.",
+      icono: `<circle cx="24" cy="24" r="17" fill="#222"/><circle cx="24" cy="24" r="8" fill="#f5f3ee"/><path d="M38 34l8 6" stroke="#222" stroke-width="6"/>` },
+    escalera_metalica: { nombre: "Escalera de metal", corto: "Escalera", alias: "", distractor: true,
+      queEs: "Escalera de aluminio o hierro.",
+      paraQue: "Trabajos lejos de la electricidad. No se usa cerca de líneas eléctricas.", categoria: "b",
+      porQueNo: "Una escalera de metal conduce la electricidad. Cerca de líneas eléctricas se usa una escalera de fibra de vidrio, que no conduce.",
+      icono: `<path d="M14 4v40M34 4v40M14 12h20M14 22h20M14 32h20M14 42h20" stroke="#8c96a0" stroke-width="4"/>` },
+    guantes_tela: { nombre: "Guantes de tela", corto: "Guantes tela", alias: "", distractor: true,
+      queEs: "Guantes de algodón o tela común.",
+      paraQue: "Trabajo general. No protegen de la electricidad.", categoria: "b",
+      porQueNo: "Los guantes de tela no protegen contra la electricidad. Se usan guantes dieléctricos (aislantes) como parte del EPP.",
+      icono: `<path d="M14 44V22l-4-10a2 2 0 0 1 4-1l3 7V6a2 2 0 0 1 4 0v10V4a2 2 0 0 1 4 0v12V6a2 2 0 0 1 4 0v12V10a2 2 0 0 1 4 0v20q0 14-10 14z" fill="#e8dcc0" stroke="#7a6a4a" stroke-width="2"/>` }
+  },
+
+  /* ---------------- ZONAS DE CADA ESCENA ----------------
+     x, y, ancho, alto en un dibujo de 360 x 400. "aviso" sale si alguien
+     se equivoca al tocar esa zona. */
+  escenas: {
+    aerea: { zonas: {
+      poste:       { nombre: "Red del poste (zona de la distribuidora)", x: 5,   y: 28,  w: 70, h: 60,
+                     aviso: "Esa es la red de la distribuidora: solo trabaja en ella personal autorizado de la EDE." },
+      instructor:  { nombre: "Instructor", x: 36,  y: 258, w: 52, h: 80 },
+      trabajador:  { nombre: "Trabajador (tú)", x: 88,  y: 258, w: 56, h: 80 },
+      suelo:       { nombre: "Alrededor de la zona de trabajo", x: 30, y: 340, w: 140, h: 56 },
+      panel:       { nombre: "Panel dentro de la casa", x: 158, y: 222, w: 64, h: 76 },
+      salida_mufa: { nombre: "Entre la mufa y el anclaje", x: 226, y: 104, w: 54, h: 68 },
+      pared_alta:  { nombre: "Pared alta (punto de anclaje)", x: 222, y: 174, w: 56, h: 54 },
+      punta_tubo:  { nombre: "Punta de arriba del tubo", x: 280, y: 48, w: 56, h: 54 },
+      tramo_tubo:  { nombre: "Recorrido del tubo en la pared", x: 280, y: 104, w: 56, h: 136 },
+      pared_media: { nombre: "Pared de la casa (lugar de la base)", x: 280, y: 242, w: 56, h: 64 },
+      suelo_base:  { nombre: "Suelo junto a la base", x: 290, y: 340, w: 66, h: 56 }
+    }},
+    soterrada: { zonas: {
+      poste:        { nombre: "Red del poste (zona de la distribuidora)", x: 5, y: 28, w: 70, h: 60,
+                      aviso: "Esa es la red de la distribuidora: solo trabaja en ella personal autorizado de la EDE." },
+      subida_poste: { nombre: "Subida por el poste", x: 14, y: 128, w: 54, h: 120 },
+      acera:        { nombre: "Borde de la zona de trabajo", x: 68, y: 192, w: 52, h: 56 },
+      trabajador:   { nombre: "Trabajador (tú)", x: 120, y: 166, w: 52, h: 84 },
+      instructor:   { nombre: "Instructor", x: 172, y: 166, w: 50, h: 84 },
+      pared_media:  { nombre: "Pared de la casa (lugar de la base)", x: 288, y: 144, w: 56, h: 52 },
+      subida_casa:  { nombre: "Subida desde el suelo hasta la base", x: 288, y: 196, w: 56, h: 54 },
+      zanja:        { nombre: "Zanja (del poste a la casa)", x: 40, y: 252, w: 300, h: 98 },
+      suelo_base:   { nombre: "Suelo junto a la casa", x: 290, y: 350, w: 66, h: 50 }
+    }}
+  },
+
+  /* ---------------- PASOS DE CADA ACOMETIDA ----------------
+     accion: lo que hay que hacer · pieza / zona: respuesta correcta
+     explicacion: por qué (sale al acertar) · confirmar: dato que debe dar el instructor
+     errorLugar: mensaje si la pieza es correcta pero el lugar no
+     errorSiSeSalta: mensaje si se salta un paso crítico · dibujo: lo que aparece en la escena */
+  acometidas: {
+    aerea: {
+      titulo: "Acometida aérea",
+      descripcion: "El cable llega por el aire desde el poste hasta la casa.",
+      distractores: ["cable_interior", "tubo_agua", "cinta_aislante", "escalera_metalica", "guantes_tela"],
+      pasos: [
+        { id: "epp", accion: "Ponte el equipo de protección", pieza: "epp", zona: "trabajador", dibujo: "a_epp",
+          critico: true, categoria: "b",
+          explicacion: "Casco, guantes dieléctricos y lentes protegen de golpes, descargas y chispas. Va antes de tocar cualquier cosa.",
+          errorSiSeSalta: "Antes de tocar herramientas o piezas, ponte el equipo de protección: casco, guantes dieléctricos y lentes. Sin él, una descarga o un golpe puede ser grave.",
+          errorLugar: "El equipo de protección se lo pone el trabajador (tú)." },
+        { id: "verificar", accion: "Verifica que no hay tensión donde vas a trabajar", pieza: "detector", zona: "pared_media", dibujo: "a_verificar",
+          critico: true, categoria: "a", fuente: "5 reglas de oro (INSST)",
+          explicacion: "Nunca supongas que no hay electricidad: compruébalo con el detector. Hasta verificarlo, todo se trata como si tuviera tensión.",
+          confirmar: "Cómo y quién hace la verificación en el examen: confirmar con instructor.",
+          errorSiSeSalta: "Te saltaste la verificación de tensión. Nunca supongas que no hay electricidad: compruébalo con el detector. Así ocurren los accidentes, y en un examen puede significar reprobar.",
+          errorLugar: "Verifica en el punto donde vas a trabajar: la pared de la casa. No te acerques a la red del poste." },
+        { id: "senalizar", accion: "Señaliza la zona de trabajo", pieza: "conos", zona: "suelo", dibujo: "a_conos",
+          critico: true, categoria: "a", fuente: "5 reglas de oro (INSST)",
+          explicacion: "Los conos o la cinta evitan que otras personas pasen debajo o cerca mientras trabajas en altura.",
+          errorSiSeSalta: "Primero señaliza la zona con conos o cinta, para que nadie pase cerca ni debajo mientras trabajas.",
+          errorLugar: "Los conos van en el suelo, alrededor de la zona de trabajo." },
+        { id: "anclaje", accion: "Fija el aislador de anclaje en la pared alta", pieza: "aislador", zona: "pared_alta", dibujo: "a_anclaje",
+          categoria: "b",
+          explicacion: "El aislador recibe el tirón del cable que viene del poste. Debe quedar firme, en una parte sólida de la casa y más abajo que la mufa.",
+          confirmar: "Altura del anclaje y distancia a ventanas: confirmar con instructor.",
+          errorLugar: "El aislador de anclaje va en la pared alta, debajo de donde irá la mufa." },
+        { id: "base", accion: "Fija la base del contador en la pared", pieza: "base_contador", zona: "pared_media", dibujo: "a_base",
+          categoria: "b",
+          explicacion: "La base sostiene el contador (medidor) que instala la distribuidora. De ella sale el tubo hacia arriba.",
+          confirmar: "Altura de la base del contador: confirmar con instructor.",
+          errorLugar: "La base va en la pared a media altura, donde se pueda leer el contador." },
+        { id: "tubo", accion: "Instala el tubo desde la base hacia arriba, con abrazaderas", pieza: "tubo", zona: "tramo_tubo", dibujo: "a_tubo",
+          categoria: "b",
+          explicacion: "El tubo protege los cables. Las abrazaderas lo mantienen firme: un tubo flojo se mueve y puede dañar el cable.",
+          confirmar: "Tipo y diámetro del tubo: confirmar con instructor.",
+          errorLugar: "El tubo va pegado a la pared, desde la base hacia arriba." },
+        { id: "mufa", accion: "Coloca la mufa (capacete) en la punta del tubo", pieza: "mufa", zona: "punta_tubo", dibujo: "a_mufa",
+          categoria: "b",
+          explicacion: "La mufa tapa el tubo con las salidas hacia abajo para que no entre la lluvia. Debe quedar más arriba que el anclaje.",
+          errorLugar: "La mufa va en la punta de arriba del tubo, no abajo: es la tapa contra la lluvia." },
+        { id: "goteo", accion: "Pasa los cables y deja la curva de goteo", pieza: "conductores", zona: "salida_mufa", dibujo: "a_goteo",
+          categoria: "b",
+          explicacion: "Los cables salen de la mufa y forman una curva que baja antes de subir a la entrada. Así el agua gotea desde la parte baja y no se mete al tubo.",
+          confirmar: "Calibre de los cables y largo que se deja: confirmar con instructor.",
+          errorLugar: "La curva de goteo se forma con los cables que salen de la mufa, entre la mufa y el anclaje." },
+        { id: "tierra", accion: "Instala la varilla de tierra y su cable", pieza: "varilla", zona: "suelo_base", dibujo: "a_tierra",
+          categoria: "b",
+          explicacion: "La puesta a tierra da un camino seguro a la electricidad si hay una falla. La varilla se clava en el suelo y su cable va a la base.",
+          confirmar: "Largo de la varilla y calibre del cable de tierra: confirmar con instructor.",
+          errorLugar: "La varilla de tierra se clava en el suelo, cerca de la base del contador." },
+        { id: "conexion", accion: "Conecta los cables en la base del contador", pieza: "conductores", zona: "pared_media", dibujo: "a_conexion",
+          categoria: "b",
+          explicacion: "Por lo común, los cables que vienen de la calle (línea) van arriba y los que van a la casa (carga) van abajo. Si se invierten, se puede dañar el contador.",
+          confirmar: "Orden de conexión en la base: confirmar con instructor.",
+          errorLugar: "Esta conexión se hace dentro de la base del contador." },
+        { id: "triplex", accion: "Sujeta el cable triplex en el aislador de anclaje", pieza: "triplex", zona: "pared_alta", dibujo: "a_triplex",
+          categoria: "b",
+          explicacion: "El triplex trae la energía desde el poste. Se sujeta en el aislador para que el tirón no lo aguanten las conexiones. El empalme con la red lo hace personal autorizado de la distribuidora (EDE).",
+          confirmar: "Qué parte del triplex te toca hacer en el examen: confirmar con instructor.",
+          errorLugar: "El triplex se sujeta en el aislador de anclaje de la casa. En el poste trabaja solo la distribuidora." },
+        { id: "breaker", accion: "Instala el breaker principal en el panel", pieza: "breaker", zona: "panel", dibujo: "a_breaker",
+          categoria: "b",
+          explicacion: "El breaker principal permite cortar toda la energía de la casa y la protege si pasa demasiada corriente.",
+          confirmar: "Capacidad del breaker (amperios): confirmar con instructor.",
+          errorLugar: "El breaker principal va en el panel, dentro de la casa." },
+        { id: "entrega", accion: "Revisa todo y entrégalo al instructor, sin energía", pieza: "lista", zona: "instructor", dibujo: "a_entrega",
+          categoria: "b",
+          explicacion: "Revisa que todo esté firme, la mufa con salidas hacia abajo, la curva de goteo y la tierra conectada. Se entrega sin energía: el contador y la conexión a la red los pone la distribuidora.",
+          errorLugar: "El trabajo se entrega al instructor para que lo revise." }
+      ]
+    },
+
+    soterrada: {
+      titulo: "Acometida soterrada",
+      descripcion: "El cable llega por debajo del suelo, dentro de un tubo en una zanja.",
+      distractores: ["cable_interior", "tubo_agua", "cinta_aislante", "escalera_metalica", "guantes_tela"],
+      pasos: [
+        { id: "epp", accion: "Ponte el equipo de protección", pieza: "epp", zona: "trabajador", dibujo: "s_epp",
+          critico: true, categoria: "b",
+          explicacion: "Casco, guantes dieléctricos y lentes protegen de golpes, descargas y chispas. Va antes de tocar cualquier cosa.",
+          errorSiSeSalta: "Antes de tocar herramientas o piezas, ponte el equipo de protección: casco, guantes dieléctricos y lentes.",
+          errorLugar: "El equipo de protección se lo pone el trabajador (tú)." },
+        { id: "verificar", accion: "Verifica que no hay tensión donde vas a trabajar", pieza: "detector", zona: "pared_media", dibujo: "s_verificar",
+          critico: true, categoria: "a", fuente: "5 reglas de oro (INSST)",
+          explicacion: "Nunca supongas que no hay electricidad: compruébalo con el detector. Hasta verificarlo, todo se trata como si tuviera tensión.",
+          confirmar: "Cómo y quién hace la verificación en el examen: confirmar con instructor.",
+          errorSiSeSalta: "Te saltaste la verificación de tensión. Nunca supongas que no hay electricidad: compruébalo con el detector. Así ocurren los accidentes, y en un examen puede significar reprobar.",
+          errorLugar: "Verifica en el punto donde vas a trabajar: la pared de la casa. No te acerques a la red del poste." },
+        { id: "senalizar", accion: "Señaliza la zona de trabajo", pieza: "conos", zona: "acera", dibujo: "s_conos",
+          critico: true, categoria: "a", fuente: "5 reglas de oro (INSST)",
+          explicacion: "Los conos o la cinta evitan que alguien se caiga en la zanja o pase por la zona de trabajo.",
+          errorSiSeSalta: "Primero señaliza la zona con conos o cinta. Una zanja abierta sin aviso es un peligro para cualquiera que pase.",
+          errorLugar: "Los conos van en el borde de la zona de trabajo." },
+        { id: "localizar", accion: "Localiza las tuberías y cables enterrados antes de excavar", pieza: "plano", zona: "zanja", dibujo: "s_localizar",
+          critico: true, categoria: "b",
+          explicacion: "Antes de excavar se revisa el plano y se usa el detector de servicios. En el dibujo había una tubería de agua cruzando: ahora está marcada.",
+          errorSiSeSalta: "Antes de excavar hay que localizar tuberías y cables enterrados. Romper uno puede causar una descarga, una fuga o una inundación.",
+          errorLugar: "Se busca lo que hay enterrado en la ruta de la zanja." },
+        { id: "excavar", accion: "Excava la zanja por la ruta marcada", pieza: "pala", zona: "zanja", dibujo: "s_excavar",
+          categoria: "b",
+          explicacion: "La zanja va del poste a la casa por la ruta revisada. Cerca de la tubería que localizaste se excava con cuidado.",
+          confirmar: "Profundidad y ancho de la zanja: confirmar con instructor.",
+          errorLugar: "Se excava en la ruta de la zanja, entre el poste y la casa." },
+        { id: "arena", accion: "Pon una cama de arena en el fondo de la zanja", pieza: "arena", zona: "zanja", dibujo: "s_arena",
+          categoria: "b",
+          explicacion: "La arena deja el fondo parejo y sin piedras que puedan romper el tubo.",
+          confirmar: "Espesor de la cama de arena: confirmar con instructor.",
+          errorLugar: "La arena va en el fondo de la zanja." },
+        { id: "base", accion: "Fija la base del contador en la pared", pieza: "base_contador", zona: "pared_media", dibujo: "s_base",
+          categoria: "b",
+          explicacion: "La base sostiene el contador (medidor) que instala la distribuidora. El tubo que viene de la zanja sube hasta ella.",
+          confirmar: "Altura de la base del contador: confirmar con instructor.",
+          errorLugar: "La base va en la pared de la casa." },
+        { id: "tubo", accion: "Tiende el tubo eléctrico dentro de la zanja", pieza: "tubo_pvc", zona: "zanja", dibujo: "s_tubo",
+          categoria: "b",
+          explicacion: "El tubo PVC eléctrico protege el cable bajo tierra. Las uniones y curvas deben ser del mismo tipo y quedar bien pegadas.",
+          confirmar: "Tipo y diámetro del tubo: confirmar con instructor.",
+          errorLugar: "El tubo va dentro de la zanja, sobre la arena." },
+        { id: "subida_poste", accion: "Instala la subida protegida en el poste", pieza: "tubo_subida", zona: "subida_poste", dibujo: "s_subida_poste",
+          categoria: "b",
+          explicacion: "El tubo sale de la zanja y sube por el poste, protegido contra golpes. La conexión con la red, arriba, la hace la distribuidora.",
+          confirmar: "Altura de la protección y quién hace esta parte: confirmar con instructor.",
+          errorLugar: "Esta subida va a lo largo del poste, desde el suelo. Arriba, en la red, trabaja solo la distribuidora." },
+        { id: "subida_casa", accion: "Sube el tubo desde la zanja hasta la base del contador", pieza: "tubo_subida", zona: "subida_casa", dibujo: "s_subida_casa",
+          categoria: "b",
+          explicacion: "En la casa, el tubo sale de la zanja y sube hasta la base. La parte que sale del suelo queda expuesta a golpes y debe ir protegida.",
+          errorLugar: "Esta subida va desde el suelo hasta la base del contador." },
+        { id: "guia", accion: "Pasa la guía por dentro del tubo", pieza: "guia", zona: "zanja", dibujo: "s_guia",
+          categoria: "b",
+          explicacion: "La guía recorre el tubo y luego jala el cable. Si se traba, revisa curvas y uniones: no fuerces.",
+          errorLugar: "La guía se pasa por dentro del tubo, en la zanja." },
+        { id: "cable", accion: "Pasa el cable apto para lugar húmedo", pieza: "cable_humedo", zona: "zanja", dibujo: "s_cable",
+          categoria: "b",
+          explicacion: "Bajo tierra el tubo puede llenarse de agua o humedad. Por eso el cable debe estar fabricado para lugar húmedo.",
+          confirmar: "Tipo y calibre del cable: confirmar con instructor.",
+          errorLugar: "El cable se pasa por dentro del tubo de la zanja." },
+        { id: "inspeccion", accion: "Pide la revisión antes de tapar la zanja", pieza: "lista", zona: "instructor", dibujo: "s_inspeccion",
+          categoria: "b",
+          explicacion: "Con la zanja abierta se puede revisar el recorrido, la profundidad y la protección. Después de tapar ya no se ve.",
+          errorLugar: "La revisión se le pide al instructor." },
+        { id: "relleno", accion: "Rellena por capas y coloca la cinta de advertencia", pieza: "cinta_advertencia", zona: "zanja", dibujo: "s_relleno",
+          categoria: "b",
+          explicacion: "Se rellena compactando por capas. La cinta va por encima del tubo y avisa a quien excave en el futuro que debajo hay un cable.",
+          confirmar: "Profundidad de la cinta de advertencia: confirmar con instructor.",
+          errorLugar: "La cinta de advertencia va dentro de la zanja, por encima del tubo." },
+        { id: "tierra", accion: "Instala la varilla de tierra y su cable", pieza: "varilla", zona: "suelo_base", dibujo: "s_tierra",
+          categoria: "b",
+          explicacion: "La puesta a tierra da un camino seguro a la electricidad si hay una falla. La varilla se clava en el suelo y su cable va a la base.",
+          confirmar: "Largo de la varilla y calibre del cable de tierra: confirmar con instructor.",
+          errorLugar: "La varilla de tierra se clava en el suelo, junto a la casa." },
+        { id: "conexion", accion: "Conecta los cables en la base del contador", pieza: "cable_humedo", zona: "pared_media", dibujo: "s_conexion",
+          categoria: "b",
+          explicacion: "Por lo común, los cables que vienen de la calle (línea) van arriba y los que van a la casa (carga) van abajo.",
+          confirmar: "Orden de conexión en la base: confirmar con instructor.",
+          errorLugar: "Esta conexión se hace en la base del contador." },
+        { id: "entrega", accion: "Revisa todo y entrégalo al instructor, sin energía", pieza: "lista", zona: "instructor", dibujo: "s_entrega",
+          categoria: "b",
+          explicacion: "Revisa que todo esté firme, la zanja tapada y señalizada y la tierra conectada. Se entrega sin energía: el contador y la conexión a la red los pone la distribuidora.",
+          errorLugar: "El trabajo se entrega al instructor para que lo revise." }
+      ]
+    }
+  },
+
+  /* ---------------- VIDEOS (necesitan internet) ---------------- */
+  videos: [
+    { titulo: "Buscar videos: acometida eléctrica aérea", url: "https://www.youtube.com/results?search_query=acometida+electrica+aerea+residencial+republica+dominicana" },
+    { titulo: "Buscar videos: acometida eléctrica soterrada (subterránea)", url: "https://www.youtube.com/results?search_query=acometida+electrica+subterranea+residencial" },
+    { titulo: "Buscar videos: cómo instalar mufa y base de contador", url: "https://www.youtube.com/results?search_query=instalar+mufa+y+base+de+contador" },
+    { titulo: "Buscar videos: las 5 reglas de oro de seguridad eléctrica", url: "https://www.youtube.com/results?search_query=5+reglas+de+oro+seguridad+electrica" }
+  ],
+
+  /* ---------------- FUENTES ---------------- */
+  fuentes: [
+    { texto: "INSST (España) — Riesgo eléctrico y 5 reglas de oro", url: "https://www.insst.es/materias/riesgos/seguridad-en-el-trabajo/riesgo-electrico" },
+    { texto: "INFOTEP / OEI — Manual de instalaciones eléctricas (2010). Encontrado, pero no se pudo leer.", url: "https://oei.int/wp-content/uploads/2010/05/5-instalaciones-electricas.pdf" },
+    { texto: "SIE — Reglamento de redes de distribución aéreas (SIE-004-2023-REG). Encontrado, pero no se pudo leer.", url: "https://mem.gob.do/transparencia/wp-content/uploads/2025/02/3.9-LPI-BID-01-2025-SIE-004-2023-REG.pdf" },
+    { texto: "SIE — Resolución SIE-030-2015 (aprobación de planos por las distribuidoras)", url: "https://luzyfuerza.com.do/wp-content/uploads/2017/06/RESOLUCION-SIE-030-2015-MEMI-EMISION-REGL-TRAMITE-APROBACION-PLANOS-Y-SOLICITUDES-INTERCONEXION.pdf" }
+  ]
+};
+</script>
+
+<script>
+/* =====================================================================
+   LÓGICA — no hace falta tocar esta parte para cambiar el contenido.
+   ===================================================================== */
+"use strict";
+
+/* ---------- Dibujos de las escenas (coordenadas 360 x 400) ---------- */
+const persona = (x, suelo, color, tablilla) => `
+  <g stroke="${color}" stroke-width="4" stroke-linecap="round" fill="none">
+    <line x1="${x}" y1="${suelo-46}" x2="${x}" y2="${suelo-22}"/>
+    <line x1="${x}" y1="${suelo-22}" x2="${x-8}" y2="${suelo}"/>
+    <line x1="${x}" y1="${suelo-22}" x2="${x+8}" y2="${suelo}"/>
+    <line x1="${x}" y1="${suelo-40}" x2="${x-10}" y2="${suelo-28}"/>
+    <line x1="${x}" y1="${suelo-40}" x2="${x+10}" y2="${suelo-28}"/>
+  </g>
+  <circle cx="${x}" cy="${suelo-57}" r="9" fill="#c68b59" stroke="#333" stroke-width="2"/>
+  ${tablilla ? `<rect x="${x+8}" y="${suelo-40}" width="11" height="14" fill="#fff" stroke="#333" stroke-width="1.5"/>` : ""}`;
+const casco = (x, suelo) => `<path d="M${x-11} ${suelo-58}a11 11 0 0 1 22 0z" fill="#ffd400" stroke="#222" stroke-width="2"/>
+  <circle cx="${x-10}" cy="${suelo-28}" r="4" fill="#ff6a00" stroke="#222"/><circle cx="${x+10}" cy="${suelo-28}" r="4" fill="#ff6a00" stroke="#222"/>`;
+const sello = (x, y, r = 12) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#0b7a33" stroke="#fff" stroke-width="2"/>
+  <path d="M${x-r*0.45} ${y}l${r*0.3} ${r*0.32} ${r*0.55}-${r*0.62}" fill="none" stroke="#fff" stroke-width="3"/>`;
+const cono = (x, suelo) => `<polygon points="${x-9},${suelo} ${x},${suelo-24} ${x+9},${suelo}" fill="#ff7a00" stroke="#7a3a00" stroke-width="1.5"/>
+  <polygon points="${x-5},${suelo-10} ${x+5},${suelo-10} ${x+6},${suelo-6} ${x-6},${suelo-6}" fill="#fff"/>`;
+const poste = (alto) => `<rect x="26" y="36" width="10" height="${alto}" fill="#7a5a3a"/>
+  <rect x="4" y="46" width="56" height="6" fill="#5e4329"/>
+  <circle cx="10" cy="43" r="4" fill="#e8e8e8" stroke="#333"/><circle cx="54" cy="43" r="4" fill="#e8e8e8" stroke="#333"/>
+  <line x1="0" y1="39" x2="10" y2="39" stroke="#111" stroke-width="2"/><line x1="0" y1="39" x2="54" y2="39" stroke="#111" stroke-width="2"/>
+  <line x1="0" y1="62" x2="26" y2="62" stroke="#111" stroke-width="2"/>`;
+
+const ESCENAS_SVG = {
+  aerea: {
+    fondo: `<rect width="360" height="340" fill="#cfe8fb"/>
+      <rect y="336" width="360" height="64" fill="#8b6b47"/><rect y="333" width="360" height="6" fill="#5f9e4a"/>
+      ${poste(300)}
+      <polygon points="140,170 250,120 360,170" fill="#b5452f" stroke="#5a1f12" stroke-width="2"/>
+      <rect x="150" y="170" width="200" height="166" fill="#f3dcaf" stroke="#6b4f2a" stroke-width="2"/>
+      <rect x="232" y="268" width="36" height="68" fill="#7b4b2a"/><circle cx="261" cy="304" r="2.5" fill="#f3dcaf"/>
+      <rect x="164" y="226" width="56" height="68" fill="#fff" stroke="#333" stroke-dasharray="5 4" stroke-width="2"/>
+      ${persona(64, 338, "#444", true)}${persona(115, 338, "#1d3557", false)}`,
+    encima: ""
+  },
+  soterrada: {
+    fondo: `<rect width="360" height="250" fill="#cfe8fb"/>
+      <rect y="250" width="360" height="150" fill="#9a774f"/><rect y="246" width="360" height="6" fill="#5f9e4a"/>
+      ${poste(214)}<rect x="26" y="250" width="10" height="40" fill="#5e4329"/>
+      <polygon points="212,110 286,70 360,110" fill="#b5452f" stroke="#5a1f12" stroke-width="2"/>
+      <rect x="222" y="110" width="128" height="140" fill="#f3dcaf" stroke="#6b4f2a" stroke-width="2"/>
+      <rect x="250" y="190" width="30" height="60" fill="#7b4b2a"/>
+      ${persona(141, 250, "#1d3557", false)}${persona(193, 250, "#444", true)}`,
+    encima: `<circle cx="170" cy="272" r="8" fill="#2b7bd6" stroke="#0b3d7a" stroke-width="2"/>`
+  }
+};
+
+const DIBUJOS = {
+  /* aérea */
+  a_epp: casco(115, 338),
+  a_verificar: sello(266, 262),
+  a_conos: cono(46, 338) + cono(150, 338),
+  a_anclaje: `<rect x="240" y="190" width="6" height="14" fill="#666"/><rect x="240" y="194" width="16" height="4" fill="#666"/><circle cx="256" cy="196" r="6" fill="#fff" stroke="#333" stroke-width="3"/>`,
+  a_base: `<rect x="289" y="252" width="30" height="46" rx="5" fill="#c9ccd1" stroke="#444" stroke-width="2"/><circle cx="304" cy="272" r="9" fill="#fff" stroke="#444" stroke-width="2"/>`,
+  a_tubo: `<rect x="300" y="98" width="8" height="154" fill="#9aa3ad" stroke="#444" stroke-width="1.5"/><rect x="296" y="140" width="16" height="5" fill="#444"/><rect x="296" y="205" width="16" height="5" fill="#444"/>`,
+  a_mufa: `<path d="M294 100h20v-6q-10-16-20 0z" fill="#444"/>`,
+  a_goteo: `<path d="M256 196C262 214 276 220 284 200S296 120 300 100" stroke="#111" stroke-width="3" fill="none"/>`,
+  a_tierra: `<path d="M304 298V320L330 336" stroke="#1f7a1f" stroke-width="3" fill="none"/><rect x="327" y="338" width="6" height="50" fill="#b87333" stroke="#6b3d12"/>`,
+  a_conexion: `<line x1="296" y1="256" x2="296" y2="264" stroke="#111" stroke-width="3"/><line x1="312" y1="256" x2="312" y2="264" stroke="#111" stroke-width="3"/><line x1="304" y1="254" x2="304" y2="261" stroke="#888" stroke-width="3"/>`,
+  a_triplex: `<path d="M58 41Q170 170 256 196" stroke="#111" stroke-width="3.5" fill="none"/>`,
+  a_breaker: `<path d="M289 282H220" stroke="#111" stroke-width="2" stroke-dasharray="4 3"/><rect x="180" y="238" width="24" height="44" rx="3" fill="#e6e6e6" stroke="#333" stroke-width="2"/><rect x="187" y="246" width="10" height="14" fill="#222"/>`,
+  a_entrega: sello(200, 190, 16),
+  /* soterrada */
+  s_epp: casco(141, 250),
+  s_verificar: sello(272, 160),
+  s_conos: cono(80, 250) + cono(108, 250),
+  s_localizar: `<line x1="170" y1="250" x2="170" y2="226" stroke="#333" stroke-width="2"/><polygon points="170,226 186,231 170,236" fill="#e00"/>`,
+  s_excavar: `<rect x="40" y="252" width="300" height="98" fill="#4a3624"/>`,
+  s_arena: `<rect x="40" y="330" width="300" height="20" fill="#e8d29a"/>`,
+  s_base: `<rect x="301" y="148" width="30" height="46" rx="5" fill="#c9ccd1" stroke="#444" stroke-width="2"/><circle cx="316" cy="168" r="9" fill="#fff" stroke="#444" stroke-width="2"/>`,
+  s_tubo: `<rect x="40" y="318" width="300" height="11" rx="5" fill="#9aa0a6" stroke="#444"/>`,
+  s_subida_poste: `<rect x="40" y="138" width="8" height="186" fill="#9aa0a6" stroke="#444"/><rect x="38" y="200" width="12" height="48" fill="#e0b800" stroke="#444"/><path d="M36 140h16v-5q-8-12-16 0z" fill="#444"/>`,
+  s_subida_casa: `<rect x="312" y="194" width="8" height="130" fill="#9aa0a6" stroke="#444"/><rect x="310" y="222" width="12" height="28" fill="#e0b800" stroke="#444"/>`,
+  s_guia: `<line x1="44" y1="323" x2="316" y2="323" stroke="#ffd400" stroke-width="2.5" stroke-dasharray="6 4"/>`,
+  s_cable: `<path d="M44 140V323H316V194" stroke="#111" stroke-width="2.5" fill="none"/>`,
+  s_inspeccion: sello(193, 168),
+  s_relleno: `<rect x="50" y="252" width="258" height="64" fill="#a7835a"/><line x1="50" y1="296" x2="308" y2="296" stroke="#e00" stroke-width="5" stroke-dasharray="10 5"/>`,
+  s_tierra: `<path d="M331 184L346 204V354" stroke="#1f7a1f" stroke-width="3" fill="none"/><rect x="343" y="354" width="6" height="40" fill="#b87333"/>`,
+  s_conexion: `<line x1="308" y1="152" x2="308" y2="160" stroke="#111" stroke-width="3"/><line x1="324" y1="152" x2="324" y2="160" stroke="#111" stroke-width="3"/>`,
+  s_entrega: sello(286, 96, 16)
+};
+
+/* ---------- Utilidades ---------- */
+const app = document.getElementById("app");
+const CAT = { a: ["Confirmado", "cat-a"], b: ["Práctica común", "cat-b"], c: ["Confirmar con instructor", "cat-c"] };
+const MODO_TXT = { practica: "Práctica", examen: "Examen" };
+
+function h(tag, attrs = {}, ...hijos) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v === false || v == null) continue;
+    if (k === "class") e.className = v;
+    else if (k === "html") e.innerHTML = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of hijos.flat()) if (c != null && c !== false) e.append(c.nodeType ? c : document.createTextNode(String(c)));
+  return e;
+}
+const icono = (id, clase = "") => `<svg viewBox="0 0 48 48" class="${clase}" aria-hidden="true">${DATOS.piezas[id].icono}</svg>`;
+const etiqueta = (cat) => cat && CAT[cat] ? h("span", { class: "etiqueta " + CAT[cat][1] }, CAT[cat][0]) : null;
+function mezclar(lista) { const a = [...lista]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function leer(clave, def) { try { const v = localStorage.getItem("acometidas." + clave); return v ? JSON.parse(v) : def; } catch (e) { return def; } }
+function guardar(clave, valor) { try { localStorage.setItem("acometidas." + clave, JSON.stringify(valor)); } catch (e) { /* sin almacenamiento: no pasa nada */ } }
+function pintar(...nodos) { app.replaceChildren(...nodos); window.scrollTo(0, 0); }
+
+/* ---------- Validación del bloque de datos ---------- */
+function validarDatos(d = DATOS) {
+  const errores = [];
+  const piezas = d.piezas || {};
+  for (const [tipo, ac] of Object.entries(d.acometidas || {})) {
+    const zonas = (d.escenas[tipo] || {}).zonas;
+    if (!zonas) { errores.push(`La acometida "${tipo}" no tiene escena en DATOS.escenas.`); continue; }
+    if (!Array.isArray(ac.pasos) || !ac.pasos.length) errores.push(`La acometida "${tipo}" no tiene pasos.`);
+    (ac.pasos || []).forEach((p, i) => {
+      const n = `${ac.titulo || tipo}, paso ${i + 1}`;
+      if (!piezas[p.pieza]) errores.push(`${n}: la pieza "${p.pieza}" no existe en DATOS.piezas.`);
+      if (!zonas[p.zona]) errores.push(`${n}: la zona "${p.zona}" no existe en la escena "${tipo}".`);
+      if (!p.accion) errores.push(`${n}: falta el texto "accion".`);
+      if (p.categoria && !CAT[p.categoria]) errores.push(`${n}: la categoría "${p.categoria}" no es válida (usa a, b o c).`);
+      if (p.critico && !p.errorSiSeSalta) errores.push(`${n}: es crítico y le falta "errorSiSeSalta".`);
+    });
+    (ac.distractores || []).forEach(id => { if (!piezas[id]) errores.push(`${ac.titulo || tipo}: el distractor "${id}" no existe en DATOS.piezas.`); });
+  }
+  for (const [id, p] of Object.entries(piezas)) {
+    if (!p.nombre) errores.push(`La pieza "${id}" no tiene nombre.`);
+    if (p.distractor && !p.porQueNo) errores.push(`La pieza "${id}" es distractor y le falta "porQueNo".`);
+  }
+  return errores;
+}
+
+/* ---------- Pantalla de inicio ---------- */
+function inicio() {
+  const tarjeta = (tipo) => {
+    const ac = DATOS.acometidas[tipo];
+    const ultima = leer("nota." + tipo, null);
+    return h("section", { class: "tarjeta" },
+      h("h2", {}, ac.titulo),
+      h("p", {}, ac.descripcion),
+      h("p", { class: "puntaje-guardado" }, ultima ? `Último examen: ${ultima.nota} de 100` : "Todavía no has hecho el examen."),
+      h("div", { class: "fila" },
+        h("button", { class: "btn-pri", "data-accion": `practica-${tipo}`, onclick: () => iniciarJuego(tipo, "practica") }, "Practicar"),
+        h("button", { "data-accion": `examen-${tipo}`, onclick: () => iniciarJuego(tipo, "examen") }, "Examen")));
+  };
+  pintar(
+    h("header", { class: "cabecera" }, h("h1", {}, DATOS.titulo), h("p", {}, DATOS.subtitulo)),
+    h("div", { class: "aviso" }, "Material de práctica, no oficial. Las medidas (alturas, profundidades, calibres) no aparecen aquí: confírmalas con tu instructor."),
+    h("section", { class: "tarjeta" },
+      h("h2", {}, "Cómo se juega"),
+      h("ol", {}, h("li", {}, "Toca una pieza o herramienta en la bandeja de abajo."), h("li", {}, "Toca en el dibujo el lugar donde va."), h("li", {}, "Hazlo en el orden correcto, empezando por la seguridad."))),
+    tarjeta("aerea"), tarjeta("soterrada"),
+    h("button", { class: "btn-ancho", onclick: identificar.iniciar }, "¿Qué es esto? Identificar piezas"),
+    h("button", { class: "btn-ancho", onclick: repaso }, "Repaso rápido (leer antes del examen)"),
+    h("button", { class: "btn-ancho", onclick: videos }, "Videos de apoyo (necesita internet)"),
+    h("p", { class: "pie" }, "Versión 1 · Hecho para practicar. Si algo no coincide con lo que enseña tu instructor, manda lo que diga el instructor.")
+  );
+}
+
+/* ---------- Juego (práctica y examen) ---------- */
+let juego = null;
+
+function iniciarJuego(tipo, modo) {
+  const ac = DATOS.acometidas[tipo];
+  const ids = [...new Set(ac.pasos.map(p => p.pieza)), ...ac.distractores];
+  juego = { tipo, modo, paso: 0, sel: null, errores: [], marcados: new Set(), pista: 0, bandeja: mezclar(ids),
+    fb: { tipo: "info", texto: modo === "practica"
+      ? "Toca una pieza de la bandeja y luego toca dónde va en el dibujo. Si te trabas, usa «Pista»."
+      : "Examen: sin pistas. Toca una pieza y luego dónde va. Al final verás tu nota." } };
+  pintarJuego(true);
+}
+
+function pintarJuego(arriba = false) {
+  const j = juego, ac = DATOS.acometidas[j.tipo], total = ac.pasos.length, paso = ac.pasos[j.paso];
+  const zonas = DATOS.escenas[j.tipo].zonas, svg = ESCENAS_SVG[j.tipo];
+  const viejaBandeja = app.querySelector(".bandeja");
+  const scrollBandeja = viejaBandeja ? viejaBandeja.scrollLeft : 0, scrollY = window.scrollY;
+
+  const dibujos = ac.pasos.slice(0, j.paso).map(p => {
+    if (DIBUJOS[p.dibujo]) return DIBUJOS[p.dibujo];
+    const z = zonas[p.zona]; // si no hay dibujo, se pone el icono de la pieza en su zona
+    return `<g transform="translate(${z.x + z.w / 2 - 16} ${z.y + z.h / 2 - 16}) scale(.66)">${DATOS.piezas[p.pieza].icono}</g>`;
+  }).join("");
+
+  const escena = h("div", { class: "escena" + (j.sel ? " con-pieza" : ""), role: "group", "aria-label": "Escena de la " + ac.titulo.toLowerCase() },
+    h("div", { html: `<svg viewBox="0 0 360 400" aria-hidden="true">${svg.fondo}${dibujos}${svg.encima}</svg>` }),
+    ...Object.entries(zonas).map(([id, z]) => h("button", {
+      class: "zona" + (j.pista >= 2 && id === paso.zona ? " pista" : ""), "data-zona": id, "aria-label": z.nombre,
+      style: `left:${z.x / 3.6}%;top:${z.y / 4}%;width:${z.w / 3.6}%;height:${z.h / 4}%`,
+      onclick: () => tocarZona(id) })));
+
+  const fb = h("div", { class: "fb " + j.fb.tipo, role: "status", id: "fb" }, j.fb.texto,
+    j.fb.nota ? h("span", { class: "nota" }, j.fb.nota) : null,
+    j.fb.cat ? h("span", { class: "nota" }, "Este paso: ", etiqueta(j.fb.cat)) : null);
+
+  const tarea = j.modo === "practica"
+    ? h("p", { class: "tarea" }, `Paso ${j.paso + 1}: ${paso.accion}`)
+    : h("p", { class: "tarea" }, `Paso ${j.paso + 1} de ${total}: ¿qué sigue?`);
+
+  const bandeja = h("div", { class: "bandeja", role: "toolbar", "aria-label": "Bandeja de piezas y herramientas" },
+    ...j.bandeja.map(id => h("button", {
+      class: "pieza" + (j.sel === id ? " elegida" : "") + (j.pista >= 1 && id === paso.pieza ? " pista" : ""),
+      "data-pieza": id, "aria-pressed": j.sel === id ? "true" : "false", "aria-label": DATOS.piezas[id].nombre,
+      onclick: () => tocarPieza(id) },
+      h("span", { html: icono(id) }), h("span", {}, DATOS.piezas[id].corto || DATOS.piezas[id].nombre))));
+
+  app.replaceChildren(
+    h("div", { class: "barra" },
+      h("button", { onclick: () => { if (j.paso === 0 || confirm("¿Salir? Se pierde el avance de esta ronda.")) inicio(); }, "aria-label": "Volver al inicio" }, "← Inicio"),
+      h("h1", {}, `${ac.titulo.replace(/^Acometida\s+/i, "").replace(/^./, c => c.toUpperCase())} · ${MODO_TXT[j.modo]}`),
+      j.modo === "practica" ? h("button", { "data-accion": "pista", onclick: darPista }, "Pista") : null),
+    h("div", { class: "progreso", role: "progressbar", "aria-valuemin": "0", "aria-valuemax": String(total), "aria-valuenow": String(j.paso) },
+      h("div", { style: `width:${(j.paso / total) * 100}%` })),
+    tarea, escena,
+    h("div", { class: "inferior" }, fb, bandeja));
+
+  const nuevaBandeja = app.querySelector(".bandeja");
+  nuevaBandeja.scrollLeft = scrollBandeja;
+  window.scrollTo(0, arriba ? 0 : scrollY);
+}
+
+function tocarPieza(id) {
+  const j = juego, p = DATOS.piezas[id];
+  j.sel = j.sel === id ? null : id;
+  if (!j.sel) j.fb = { tipo: "info", texto: "Pieza soltada. Elige otra pieza de la bandeja." };
+  else if (j.modo === "practica") j.fb = { tipo: "info", texto: `${p.nombre}${p.alias ? " (" + p.alias + ")" : ""}: ${p.paraQue} Ahora toca dónde va.` };
+  else j.fb = { tipo: "info", texto: `Elegiste: ${p.nombre}. Ahora toca dónde va.` };
+  pintarJuego();
+}
+
+function tocarZona(zid) {
+  const j = juego, ac = DATOS.acometidas[j.tipo], paso = ac.pasos[j.paso];
+  const zonas = DATOS.escenas[j.tipo].zonas, zona = zonas[zid];
+  if (!j.sel) {
+    j.fb = { tipo: "info", texto: `Esto es: ${zona.nombre}. Primero toca una pieza en la bandeja de abajo y luego toca aquí.` };
+    return pintarJuego();
+  }
+  const pieza = DATOS.piezas[j.sel];
+
+  if (j.sel === paso.pieza && zid === paso.zona) return acierto();
+
+  let tipo, detalle;
+  if (j.sel === paso.pieza) {
+    tipo = "lugar";
+    detalle = paso.errorLugar || `Pieza correcta, pero no va en «${zona.nombre}». Va en: ${zonas[paso.zona].nombre}.`;
+  } else if (paso.critico) {
+    tipo = "critico"; detalle = paso.errorSiSeSalta;
+  } else if (pieza.distractor) {
+    tipo = "pieza"; detalle = pieza.porQueNo;
+  } else if (ac.pasos.slice(j.paso + 1).some(p => p.pieza === j.sel)) {
+    tipo = "orden"; detalle = `Todavía no: esa pieza se usa más adelante. Ahora toca: «${paso.accion}».`;
+  } else {
+    const usada = ac.pasos.slice(0, j.paso).some(p => p.pieza === j.sel);
+    tipo = "pieza"; detalle = `Esa pieza no es la que toca ahora${usada ? " (ya la usaste antes)" : ""}. Ahora toca: «${paso.accion}».`;
+  }
+  if (zona.aviso && zid !== paso.zona) detalle = zona.aviso + " " + detalle;
+
+  const clave = j.paso + "-" + tipo, nuevo = !j.marcados.has(clave);
+  if (nuevo) { j.marcados.add(clave); j.errores.push({ paso: j.paso, accion: paso.accion, tipo, detalle }); }
+
+  if (j.modo === "practica") {
+    j.fb = { tipo: "mal", texto: (tipo === "critico" ? "⚠ Error de seguridad. " : "✖ ") + detalle };
+  } else {
+    const corto = { critico: "⚠ Error de seguridad: te saltaste un paso de seguridad.", orden: "✖ Ese no es el paso que sigue.",
+      pieza: "✖ Esa pieza no es la correcta.", lugar: "✖ Pieza correcta, pero lugar equivocado." }[tipo];
+    j.fb = { tipo: "mal", texto: corto + (nuevo ? ` (−${DATOS.puntuacion[tipo]} puntos)` : "") };
+  }
+  if (tipo !== "lugar") j.sel = null;
+  pintarJuego();
+}
+
+function acierto() {
+  const j = juego, ac = DATOS.acometidas[j.tipo], paso = ac.pasos[j.paso];
+  j.paso++; j.sel = null; j.pista = 0;
+  j.fb = j.modo === "practica"
+    ? { tipo: "ok", texto: `✔ Correcto: ${paso.accion}. ${paso.explicacion}`, nota: paso.confirmar ? "Confirmar con instructor: " + paso.confirmar.replace(/:\s*confirmar con instructor\.?$/i, ".") : null, cat: paso.categoria }
+    : { tipo: "ok", texto: "✔ Correcto." };
+  if (j.paso >= ac.pasos.length) return resultado();
+  pintarJuego();
+}
+
+function darPista() {
+  const j = juego, paso = DATOS.acometidas[j.tipo].pasos[j.paso];
+  const zonas = DATOS.escenas[j.tipo].zonas;
+  if (j.sel !== paso.pieza) { j.pista = 1; j.fb = { tipo: "info", texto: `Pista: busca «${DATOS.piezas[paso.pieza].nombre}» en la bandeja (está marcada en rojo).` }; }
+  else { j.pista = 2; j.fb = { tipo: "info", texto: `Pista: va en «${zonas[paso.zona].nombre}» (marcado en rojo en el dibujo).` }; }
+  pintarJuego();
+}
+
+function calcularNota(errores) {
+  const resta = errores.reduce((s, e) => s + (DATOS.puntuacion[e.tipo] || 0), 0);
+  return Math.max(0, 100 - resta);
+}
+
+const TIPO_TXT = { critico: "Seguridad", orden: "Orden", pieza: "Pieza equivocada", lugar: "Lugar equivocado" };
+
+function resultado() {
+  const j = juego, ac = DATOS.acometidas[j.tipo];
+  const criticos = j.errores.filter(e => e.tipo === "critico").length;
+  const lista = j.errores.length
+    ? h("ol", { class: "lista-errores" }, ...j.errores.map(e => h("li", {},
+        h("strong", {}, `Paso ${e.paso + 1} · ${TIPO_TXT[e.tipo]}: `), `${e.accion}. `, h("br"), e.detalle)))
+    : h("p", {}, "¡Sin errores!");
+  const botones = h("div", { class: "fila" },
+    h("button", { class: "btn-pri", onclick: () => iniciarJuego(j.tipo, j.modo) }, j.modo === "examen" ? "Repetir examen" : "Practicar otra vez"),
+    h("button", { onclick: () => iniciarJuego(j.tipo, j.modo === "examen" ? "practica" : "examen") }, j.modo === "examen" ? "Ir a práctica" : "Hacer el examen"),
+    h("button", { onclick: inicio }, "Inicio"));
+
+  if (j.modo === "practica") {
+    return pintar(h("h1", {}, `¡Completaste la ${ac.titulo.toLowerCase()}!`),
+      h("p", {}, j.errores.length ? `Tuviste ${j.errores.length} error(es). Repásalos:` : "Lo hiciste sin errores. Prueba ahora el modo examen."),
+      lista, botones);
+  }
+  const nota = calcularNota(j.errores);
+  guardar("nota." + j.tipo, { nota, fecha: new Date().toISOString() });
+  const u = DATOS.umbrales;
+  const veredicto = (nota >= u.listo && !criticos) ? ["Listo", "ok"] : nota >= u.repasa ? ["Repasa", "info"] : ["Practica más", "mal"];
+  pintar(
+    h("h1", {}, `Resultado · ${ac.titulo}`),
+    h("p", { class: "nota-grande", id: "nota" }, `${nota}`), h("p", {}, "de 100 puntos"),
+    h("div", { class: "fb " + veredicto[1] }, veredicto[0]),
+    criticos ? h("div", { class: "fb mal" }, `⚠ Cometiste ${criticos} error(es) de seguridad. En un examen real esto puede hacer que repruebes, aunque lo demás esté bien.`) : null,
+    h("p", { class: "aviso" }, "Nota de práctica: no equivale a la evaluación del INFOTEP."),
+    h("h2", {}, "Errores para repasar"), lista, botones);
+}
+
+/* ---------- Identificar piezas ---------- */
+const identificar = {
+  estado: null,
+  iniciar() {
+    const ids = Object.keys(DATOS.piezas);
+    identificar.estado = { mazo: mezclar(ids).slice(0, 10), pos: 0, aciertos: 0, resp: null, opciones: [] };
+    identificar.prepararOpciones(); identificar.pintar();
+  },
+  prepararOpciones() {
+    const e = identificar.estado, id = e.mazo[e.pos];
+    const otras = mezclar(Object.keys(DATOS.piezas).filter(x => x !== id)).slice(0, 2);
+    e.opciones = mezclar([id, ...otras]); e.resp = null;
+  },
+  pintar() {
+    const e = identificar.estado;
+    if (e.pos >= e.mazo.length) {
+      return pintar(h("h1", {}, "Identificar piezas"),
+        h("p", { class: "nota-grande" }, `${e.aciertos} de ${e.mazo.length}`),
+        h("div", { class: "fila" }, h("button", { class: "btn-pri", onclick: identificar.iniciar }, "Otra ronda"), h("button", { onclick: inicio }, "Inicio")));
+    }
+    const id = e.mazo[e.pos], p = DATOS.piezas[id];
+    const hijos = [
+      h("div", { class: "barra" }, h("button", { onclick: inicio }, "← Inicio"), h("h1", {}, `¿Qué es esto? (${e.pos + 1} de ${e.mazo.length})`)),
+      h("div", { html: icono(id, "icono-grande") }),
+      ...e.opciones.map(op => h("button", { class: "btn-ancho", "data-opcion": op, disabled: e.resp !== null,
+        style: e.resp !== null && op === id ? "background:#dcf3e2;border-color:#0b5d26;color:#0b5d26;font-weight:700" : null,
+        onclick: () => { e.resp = op; if (op === id) e.aciertos++; identificar.pintar(); } }, DATOS.piezas[op].nombre))
+    ];
+    if (e.resp !== null) {
+      const bien = e.resp === id;
+      hijos.push(h("div", { class: "fb " + (bien ? "ok" : "mal") },
+        h("strong", {}, (bien ? "✔ Correcto: " : "✖ Era: ") + p.nombre), p.alias ? ` (también: ${p.alias})` : "", h("br"),
+        `${p.queEs} ${p.distractor ? p.porQueNo : "Sirve para: " + p.paraQue}`));
+      hijos.push(h("button", { class: "btn-ancho btn-pri", onclick: () => { e.pos++; if (e.pos < e.mazo.length) identificar.prepararOpciones(); identificar.pintar(); } }, "Siguiente"));
+    }
+    pintar(...hijos);
+  }
+};
+
+/* ---------- Repaso rápido ---------- */
+function repaso() {
+  const listaPasos = (tipo) => {
+    const ac = DATOS.acometidas[tipo];
+    return h("details", { open: true }, h("summary", {}, ac.titulo),
+      h("ol", { class: "pasos" }, ...ac.pasos.map(p => h("li", {},
+        h("strong", {}, p.accion), p.critico ? " ⚠" : "", h("br"),
+        `Pieza: ${DATOS.piezas[p.pieza].nombre}. `, etiqueta(p.categoria),
+        p.confirmar ? h("div", { class: "cat-c", style: "border:0;background:none" }, p.confirmar) : null))));
+  };
+  const reales = Object.entries(DATOS.piezas).filter(([, p]) => !p.distractor);
+  const malas = Object.entries(DATOS.piezas).filter(([, p]) => p.distractor);
+  pintar(
+    h("div", { class: "barra" }, h("button", { onclick: inicio }, "← Inicio"), h("h1", {}, "Repaso rápido")),
+    h("div", { class: "aviso" }, "⚠ = paso de seguridad. Si te lo saltas en el examen, puede ser motivo para reprobar."),
+    h("h2", {}, "Las 5 reglas de oro (seguridad)"),
+    h("ol", {}, ...DATOS.reglasDeOro.map(r => h("li", {}, r))),
+    h("p", {}, etiqueta("a"), " Fuente: INSST (España). Son un principio general de seguridad eléctrica."),
+    h("h2", {}, "Orden de los pasos"), listaPasos("aerea"), listaPasos("soterrada"),
+    h("h2", {}, "Piezas y sus otros nombres"),
+    h("dl", {}, ...reales.flatMap(([, p]) => [h("dt", {}, p.nombre + (p.alias ? ` (${p.alias})` : "")), h("dd", {}, p.paraQue)])),
+    h("h2", {}, "Lo que NO se usa"),
+    h("dl", {}, ...malas.flatMap(([, p]) => [h("dt", {}, p.nombre), h("dd", {}, p.porQueNo)])),
+    h("h2", {}, "De dónde sale esta información"),
+    h("p", {}, etiqueta("a"), " confirmado con fuente · ", etiqueta("b"), " práctica común, sin norma dominicana confirmada · ", etiqueta("c"), " debe confirmarlo el instructor."),
+    h("p", {}, "No se encontró en internet una norma dominicana con medidas para acometidas. Por eso ninguna medida aparece en esta app."),
+    h("ul", {}, ...DATOS.fuentes.map(f => h("li", {}, h("a", { href: f.url, target: "_blank", rel: "noopener noreferrer" }, f.texto)))),
+    h("button", { class: "btn-ancho", onclick: inicio }, "Volver al inicio"));
+}
+
+/* ---------- Videos ---------- */
+function videos() {
+  pintar(
+    h("div", { class: "barra" }, h("button", { onclick: inicio }, "← Inicio"), h("h1", {}, "Videos de apoyo")),
+    h("div", { class: "aviso" }, "Necesitan internet. Muchos videos son de otros países: las medidas y normas pueden ser distintas a las de República Dominicana."),
+    ...DATOS.videos.map(v => h("a", { class: "boton btn-ancho", href: v.url, target: "_blank", rel: "noopener noreferrer" }, v.titulo)),
+    h("button", { class: "btn-ancho", onclick: inicio }, "Volver al inicio"));
+}
+
+/* ---------- Arranque ---------- */
+(function arrancar() {
+  const errores = validarDatos();
+  if (errores.length) {
+    pintar(h("h1", {}, "Hay un problema en el bloque de datos"),
+      h("p", {}, "Corrige estos puntos en DATOS (al inicio del archivo):"),
+      h("ul", { id: "errores-datos" }, ...errores.map(e => h("li", {}, e))));
+    return;
+  }
+  inicio();
+})();
+</script>
+</body>
+</html>
